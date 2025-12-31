@@ -69,7 +69,7 @@ Proyecto Tercer Parcial/
 
 ### Clonar el repositorio
 ```bash
-git clone https://github.com/USUARIO/NOMBRE_DEL_REPOSITORIO.git
+git clone https://github.com/AdrianGH28/ProyectoTercerParcialAV.git
 cd Proyecto Tercer Parcial
 
 En la terminal
