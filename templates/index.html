@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora de Integrales (2D/3D)</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand">
+        <div class="brand__logo">∫</div>
+        <div class="brand__text">
+          <div class="brand__title">Calculadora de Integrales</div>
+          <div class="brand__subtitle">Dobles y Triples · Exacta vs Numérica</div>
+        </div>
+      </div>
+
+      <div class="mini">
+        <span class="mini__pill">Python</span>
+        <span class="mini__pill">Flask</span>
+        <span class="mini__pill">SymPy</span>
+        <span class="mini__pill">SciPy</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="alerts">
+      {% for category, message in messages %}
+      <div class="alert alert--{{category}}">
+        <div class="alert__dot"></div>
+        <div class="alert__text">{{ message }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <section class="hero">
+      <h1>Calcula integrales dobles y triples</h1>
+      <p>Elige función, límites y modo. Puedes calcular <b>exacta</b>, <b>numérica</b> o <b>comparar</b>.</p>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Configuración</h2>
+
+        <form method="POST" class="form" id="calcForm">
+          <div class="row">
+            <div class="field">
+              <label>Dimensión</label>
+              <select name="dims" id="dimsSelect">
+                <option value="2" {% if form.dims=="2" %}selected{% endif %}>Integral doble (x, y)</option>
+                <option value="3" {% if form.dims=="3" %}selected{% endif %}>Integral triple (x, y, z)</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Modo</label>
+              <select name="mode">
+                <option value="compare" {% if form.mode=="compare" %}selected{% endif %}>Comparar (exacta vs numérica)
+                </option>
+                <option value="exact" {% if form.mode=="exact" %}selected{% endif %}>Solo exacta</option>
+                <option value="numeric" {% if form.mode=="numeric" %}selected{% endif %}>Solo numérica</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Función f(x,y,z)</label>
+              <input type="text" name="func_expr" placeholder="Ejemplo: x*y + sin(x)" value="{{ form.func_expr }}"
+                required>
+              <div class="hint">
+                Variables permitidas: x, y ( z si es triple).
+                Funciones: sin, cos, exp.
+                Usa ^ o ** para potencias.
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Método numérico</label>
+              <select name="method">
+                <option value="scipy" {% if form.method=="scipy" %}selected{% endif %}>SciPy (rápido y preciso)</option>
+                <option value="grid" {% if form.method=="grid" %}selected{% endif %}>Grid (trapecio por malla)</option>
+              </select>
+              <div class="hint">Si no tienes SciPy, usa <b>grid</b>.</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <h3>Límites</h3>
+
+          <div class="row">
+            <div class="field">
+              <label>x: a</label>
+              <input type="number" name="ax" step="any" value="{{ form.ax }}">
+            </div>
+            <div class="field">
+              <label>x: b</label>
+              <input type="number" name="bx" step="any" value="{{ form.bx }}">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>y: c</label>
+              <input type="number" name="ay" step="any" value="{{ form.ay }}">
+            </div>
+            <div class="field">
+              <label>y: d</label>
+              <input type="number" name="by" step="any" value="{{ form.by }}">
+            </div>
+          </div>
+
+          <div class="row" id="zRow">
+            <div class="field">
+              <label>z: e</label>
+              <input type="number" name="az" step="any" value="{{ form.az }}">
+            </div>
+            <div class="field">
+              <label>z: f</label>
+              <input type="number" name="bz" step="any" value="{{ form.bz }}">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field span2">
+              <label>Subdivisiones (n)</label>
+              <input type="number" name="n" min="8" step="1" value="{{ form.n }}">
+              <div class="hint">En grid: más n = más precisión (pero más tiempo). En 3D, usa n moderado.</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn btn--primary">Calcular</button>
+            <button type="button" class="btn btn--ghost" id="btnReset">Restablecer</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Resultado</h2>
+
+        {% if result %}
+        <div class="result">
+          <div class="result__title">{{ result.title }}</div>
+
+          <div class="result__grid">
+            {% if result.exact %}
+            <div class="result__item">
+              <div class="result__label">Exacta (forma simbólica)</div>
+              <pre class="code">{{ result.exact }}</pre>
+            </div>
+            {% endif %}
+
+            {% if result.exact_approx %}
+            <div class="result__item">
+              <div class="result__label">Exacta (aprox.)</div>
+              <div class="pill">{{ result.exact_approx }}</div>
+            </div>
+            {% endif %}
+
+            {% if result.numeric %}
+            <div class="result__item">
+              <div class="result__label">Numérica</div>
+              <div class="pill">{{ result.numeric }}</div>
+            </div>
+            {% endif %}
+
+            {% if result.abs_error %}
+            <div class="result__item">
+              <div class="result__label">Error absoluto</div>
+              <div class="pill">{{ result.abs_error }}</div>
+            </div>
+            {% endif %}
+
+            {% if result.rel_error %}
+            <div class="result__item">
+              <div class="result__label">Error relativo</div>
+              <div class="pill">{{ result.rel_error }}</div>
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="note">
+            Si el error te sale alto: usa <b>SciPy</b> o aumenta <b>n</b> (en grid).
+          </div>
+        </div>
+        {% else %}
+        <div class="empty">
+          <div class="empty__icon">🧮</div>
+          <div class="empty__text">
+            Configura tu integral y presiona <b>Calcular</b>.
+          </div>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div>Proyecto: Integrales dobles y triples</div>
+      <div class="footer__muted">Exacta (SymPy) · Numérica (SciPy/Grid)</div>
+    </div>
+  </footer>
+</body>
+
+</html>
